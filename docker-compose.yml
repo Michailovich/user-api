@@ -12,19 +12,6 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-
-  test_db:
-    image: postgres:latest
-    restart: always
-    environment:
-      POSTGRES_USER: test_user
-      POSTGRES_PASSWORD: test_password
-      POSTGRES_DB: test_db
-    ports:
-      - "5433:5432"  
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-
   app:
     build: .
     restart: always
@@ -37,3 +24,4 @@ services:
 
 volumes:
   pgdata:
+  

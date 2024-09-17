@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -85,10 +86,15 @@ func createUser(c *gin.Context) {
 }
 
 func getUser(c *gin.Context) {
-	id := c.Param("id")
-	var user User
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
 
-	err := db.QueryRow(context.Background(), "SELECT id, firstname, lastname, email, age, created FROM users WHERE id = $1", id).Scan(&user.ID, &user.Firstname, &user.Lastname, &user.Email, &user.Age, &user.Created)
+	var user User
+	err = db.QueryRow(context.Background(), "SELECT id, firstname, lastname, email, age, created FROM users WHERE id = $1", id).Scan(&user.ID, &user.Firstname, &user.Lastname, &user.Email, &user.Age, &user.Created)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
@@ -98,15 +104,20 @@ func getUser(c *gin.Context) {
 }
 
 func editUser(c *gin.Context) {
-	id := c.Param("id")
-	var user User
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
 
+	var user User
 	if err := c.ShouldBindJSON(&user); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	_, err := db.Exec(context.Background(), "UPDATE users SET firstname = $1, lastname = $2, email = $3, age = $4 WHERE id = $5",
+	_, err = db.Exec(context.Background(), "UPDATE users SET firstname = $1, lastname = $2, email = $3, age = $4 WHERE id = $5",
 		user.Firstname, user.Lastname, user.Email, user.Age, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

@@ -7,7 +7,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-
+CMD ["go", "test", "-v"]
 ENV GOOS=linux
 ENV GOARCH=amd64
 ENV CGO_ENABLED=0
