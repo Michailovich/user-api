@@ -23,14 +23,133 @@ type User struct {
 	Created   time.Time `json:"created"`
 }
 
-var db *pgx.Conn
+type UserRepository interface {
+	CreateUser(ctx context.Context, user *User) error
+	GetUserByID(ctx context.Context, id int) (*User, error)
+	UpdateUser(ctx context.Context, id int, user *User) error
+}
 
-func initDB() {
-	var err error
-	dbURL := os.Getenv("DATABASE_URL")
-	db, err = pgx.Connect(context.Background(), dbURL)
+type PostgresUserRepository struct {
+	db *pgx.Conn
+}
+
+func NewPostgresUserRepository(db *pgx.Conn) *PostgresUserRepository {
+	return &PostgresUserRepository{db: db}
+}
+
+func (r *PostgresUserRepository) CreateUser(ctx context.Context, user *User) error {
+	return r.db.QueryRow(ctx, "INSERT INTO users (firstname, lastname, email, age, created) VALUES ($1, $2, $3, $4, $5) RETURNING id",
+		user.Firstname, user.Lastname, user.Email, user.Age, user.Created).Scan(&user.ID)
+}
+
+func (r *PostgresUserRepository) GetUserByID(ctx context.Context, id int) (*User, error) {
+	var user User
+	err := r.db.QueryRow(ctx, "SELECT id, firstname, lastname, email, age, created FROM users WHERE id = $1", id).Scan(&user.ID, &user.Firstname, &user.Lastname, &user.Email, &user.Age, &user.Created)
 	if err != nil {
-		panic(err)
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (r *PostgresUserRepository) UpdateUser(ctx context.Context, id int, user *User) error {
+	_, err := r.db.Exec(ctx, "UPDATE users SET firstname = $1, lastname = $2, email = $3, age = $4 WHERE id = $5",
+		user.Firstname, user.Lastname, user.Email, user.Age, id)
+	return err
+}
+
+type UserService struct {
+	repo UserRepository
+}
+
+func NewUserService(repo UserRepository) *UserService {
+	return &UserService{repo: repo}
+}
+
+func (s *UserService) CreateUser(ctx context.Context, user *User) error {
+	user.Created = time.Now()
+	return s.repo.CreateUser(ctx, user)
+}
+
+func (s *UserService) GetUser(ctx context.Context, id int) (*User, error) {
+	return s.repo.GetUserByID(ctx, id)
+}
+
+func (s *UserService) UpdateUser(ctx context.Context, id int, user *User) error {
+	return s.repo.UpdateUser(ctx, id, user)
+}
+
+type UserController struct {
+	service *UserService
+}
+
+func NewUserController(service *UserService) *UserController {
+	return &UserController{service: service}
+}
+
+func (c *UserController) CreateUser(ctx *gin.Context) {
+	var user User
+	if err := ctx.ShouldBindJSON(&user); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := validateUser(user); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := c.service.CreateUser(context.Background(), &user); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusCreated, user)
+}
+
+func (c *UserController) GetUser(ctx *gin.Context) {
+	idStr := ctx.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	user, err := c.service.GetUser(context.Background(), id)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, user)
+}
+
+func (c *UserController) UpdateUser(ctx *gin.Context) {
+	idStr := ctx.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	var user User
+	if err := ctx.ShouldBindJSON(&user); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := c.service.UpdateUser(context.Background(), id, &user); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "User updated"})
+}
+
+func initDB() (*pgx.Conn, error) {
+	dbURL := os.Getenv("DATABASE_URL")
+	db, err := pgx.Connect(context.Background(), dbURL)
+	if err != nil {
+		return nil, err
 	}
 	_, err = db.Exec(context.Background(), `
 		CREATE TABLE IF NOT EXISTS users (
@@ -42,9 +161,7 @@ func initDB() {
 			created TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		)
 	`)
-	if err != nil {
-		log.Fatalf("Failed to create table: %v\n", err)
-	}
+	return db, err
 }
 
 func isValidEmail(email string) bool {
@@ -62,79 +179,21 @@ func validateUser(user User) error {
 	return nil
 }
 
-func createUser(c *gin.Context) {
-	var user User
-	if err := c.ShouldBindJSON(&user); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	user.Created = time.Now()
-
-	if err := validateUser(user); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	err := db.QueryRow(context.Background(), "INSERT INTO users (firstname, lastname, email, age, created) VALUES ($1, $2, $3, $4, $5) RETURNING id",
-		user.Firstname, user.Lastname, user.Email, user.Age, user.Created).Scan(&user.ID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusCreated, user)
-}
-
-func getUser(c *gin.Context) {
-	idStr := c.Param("id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
-		return
-	}
-
-	var user User
-	err = db.QueryRow(context.Background(), "SELECT id, firstname, lastname, email, age, created FROM users WHERE id = $1", id).Scan(&user.ID, &user.Firstname, &user.Lastname, &user.Email, &user.Age, &user.Created)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
-		return
-	}
-
-	c.JSON(http.StatusOK, user)
-}
-
-func editUser(c *gin.Context) {
-	idStr := c.Param("id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
-		return
-	}
-
-	var user User
-	if err := c.ShouldBindJSON(&user); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	_, err = db.Exec(context.Background(), "UPDATE users SET firstname = $1, lastname = $2, email = $3, age = $4 WHERE id = $5",
-		user.Firstname, user.Lastname, user.Email, user.Age, id)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "User updated"})
-}
-
 func main() {
-	initDB()
+	db, err := initDB()
+	if err != nil {
+		log.Fatalf("Failed to initialize database: %v\n", err)
+	}
 	defer db.Close(context.Background())
 
+	repo := NewPostgresUserRepository(db)
+	service := NewUserService(repo)
+	controller := NewUserController(service)
+
 	r := gin.Default()
-	r.POST("/users", createUser)
-	r.GET("/user/:id", getUser)
-	r.PATCH("/user/:id", editUser)
+	r.POST("/users", controller.CreateUser)
+	r.GET("/user/:id", controller.GetUser)
+	r.PATCH("/user/:id", controller.UpdateUser)
 
 	if err := r.Run(":8080"); err != nil {
 		fmt.Println("Failed to run server:", err)
