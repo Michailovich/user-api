@@ -1,4 +1,4 @@
-package main
+package test
 
 import (
 	"bytes"
@@ -9,6 +9,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"user-api/internal/userPack"
+
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -18,20 +20,20 @@ type MockUserRepository struct {
 	mock.Mock
 }
 
-func (m *MockUserRepository) CreateUser(ctx context.Context, user *User) error {
+func (m *MockUserRepository) CreateUser(ctx context.Context, user *userPack.User) error {
 	args := m.Called(ctx, user)
 	return args.Error(0)
 }
 
-func (m *MockUserRepository) GetUserByID(ctx context.Context, id int) (*User, error) {
+func (m *MockUserRepository) GetUserByID(ctx context.Context, id int) (*userPack.User, error) {
 	args := m.Called(ctx, id)
-	if user, ok := args.Get(0).(*User); ok {
-		return user, args.Error(1)
+	if u, ok := args.Get(0).(*userPack.User); ok {
+		return u, args.Error(1)
 	}
-	return nil, args.Error(1) // Return nil if the user is not found
+	return nil, args.Error(1)
 }
 
-func (m *MockUserRepository) UpdateUser(ctx context.Context, id int, user *User) error {
+func (m *MockUserRepository) UpdateUser(ctx context.Context, id int, user *userPack.User) error {
 	args := m.Called(ctx, id, user)
 	return args.Error(0)
 }
@@ -41,13 +43,13 @@ func TestCreateUser(t *testing.T) {
 	router := gin.Default()
 
 	mockRepo := new(MockUserRepository)
-	userService := NewUserService(mockRepo)
-	controller := NewUserController(userService)
+	userService := userPack.NewUserService(mockRepo)
+	controller := userPack.NewUserController(userService)
 
 	router.POST("/users", controller.CreateUser)
 
 	// Test case: Missing Firstname
-	user := User{
+	user := userPack.User{
 		Lastname: "Doe",
 		Email:    "john.doe@example.com",
 		Age:      30,
@@ -63,7 +65,7 @@ func TestCreateUser(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 
 	// Test case: Invalid Email
-	user = User{
+	user = userPack.User{
 		Firstname: "John",
 		Lastname:  "Doe",
 		Email:     "invalid-email",
@@ -80,14 +82,14 @@ func TestCreateUser(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 
 	// Test case: Successful User Creation
-	user = User{
+	user = userPack.User{
 		Firstname: "John",
 		Lastname:  "Doe",
 		Email:     "john.doe@example.com",
 		Age:       30,
 	}
 
-	mockRepo.On("CreateUser", mock.Anything, mock.MatchedBy(func(u *User) bool {
+	mockRepo.On("CreateUser", mock.Anything, mock.MatchedBy(func(u *userPack.User) bool {
 		return u.Firstname == "John" && u.Lastname == "Doe" && u.Email == "john.doe@example.com" && u.Age == 30
 	})).Return(nil)
 
@@ -107,12 +109,12 @@ func TestGetUser(t *testing.T) {
 	router := gin.Default()
 
 	mockRepo := new(MockUserRepository)
-	userService := NewUserService(mockRepo)
-	controller := NewUserController(userService)
+	userService := userPack.NewUserService(mockRepo)
+	controller := userPack.NewUserController(userService)
 
 	router.GET("/user/:id", controller.GetUser)
 
-	testUser := &User{
+	testUser := &userPack.User{
 		ID:        1,
 		Firstname: "John",
 		Lastname:  "Doe",
@@ -131,7 +133,7 @@ func TestGetUser(t *testing.T) {
 	mockRepo.AssertExpectations(t)
 
 	// Test case: User not found
-	mockRepo.On("GetUserByID", mock.Anything, 2).Return((*User)(nil), errors.New("user not found"))
+	mockRepo.On("GetUserByID", mock.Anything, 2).Return((*userPack.User)(nil), errors.New("user not found"))
 
 	req, _ = http.NewRequest(http.MethodGet, "/user/2", nil)
 	w = httptest.NewRecorder()
@@ -146,13 +148,13 @@ func TestEditUser(t *testing.T) {
 	router := gin.Default()
 
 	mockRepo := new(MockUserRepository)
-	userService := NewUserService(mockRepo)
-	controller := NewUserController(userService)
+	userService := userPack.NewUserService(mockRepo)
+	controller := userPack.NewUserController(userService)
 
 	router.PATCH("/user/:id", controller.UpdateUser)
 
 	// Test case: Successful User Update
-	updatedUser := User{
+	updatedUser := userPack.User{
 		Firstname: "Jane",
 		Lastname:  "Doe",
 		Email:     "jane.doe@example.com",

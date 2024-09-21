@@ -12,7 +12,7 @@ ENV GOOS=linux
 ENV GOARCH=amd64
 ENV CGO_ENABLED=0
 
-RUN go build -o user-api .
+RUN go build -o user-api ./cmd/user-api
 
 
 FROM alpine:latest
