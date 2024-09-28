@@ -7,8 +7,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"user-api/internal/userPack"
 	"user-api/pkg/db"
+
+	userPack "github.com/Michailovich/user-api/internal"
 )
 
 func main() {

@@ -9,7 +9,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"user-api/internal/userPack"
+	userPack "github.com/Michailovich/user-api/internal"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
