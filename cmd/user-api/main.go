@@ -7,7 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"user-api/internal/userPack"
+	userPack "user-api/internal/user-pack"
 	"user-api/pkg/db"
 )
 
