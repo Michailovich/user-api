@@ -9,8 +9,6 @@ import (
 
 	userPack "user-api/internal/user-pack"
 	"user-api/pkg/db"
-
-	userPack "github.com/Michailovich/user-api/internal"
 )
 
 func main() {

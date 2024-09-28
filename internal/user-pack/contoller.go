@@ -8,6 +8,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type UserControllerInterface interface {
+	CreateUser(ctx context.Context, user *User) error
+	GetUser(ctx context.Context, id int) (*User, error)
+	UpdateUser(ctx context.Context, id int, user *User) error
+}
 type UserController struct {
 	service *UserService
 }

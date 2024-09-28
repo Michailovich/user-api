@@ -9,7 +9,7 @@ import (
 
 type UserRepository interface {
 	CreateUser(ctx context.Context, user *User) error
-	GetUserByID(ctx context.Context, id int) (*User, error)
+	GetUser(ctx context.Context, id int) (*User, error)
 	UpdateUser(ctx context.Context, id int, user *User) error
 }
 
@@ -30,11 +30,11 @@ func (r *PostgresUserRepository) CreateUser(ctx context.Context, user *User) err
 	return nil
 }
 
-func (r *PostgresUserRepository) GetUserByID(ctx context.Context, id int) (*User, error) {
+func (r *PostgresUserRepository) GetUser(ctx context.Context, id int) (*User, error) {
 	var user User
 	err := r.db.QueryRow(ctx, "SELECT id, firstname, lastname, email, age, created FROM users WHERE id = $1", id).Scan(&user.ID, &user.Firstname, &user.Lastname, &user.Email, &user.Age, &user.Created)
 	if err != nil {
-		return nil, fmt.Errorf("GetUserByID: failed to query user with id %d: %w", id, err)
+		return nil, fmt.Errorf("GetUser: failed to query user with id %d: %w", id, err)
 	}
 	return &user, nil
 }

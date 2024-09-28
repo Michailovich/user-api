@@ -14,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 type MockUserRepository struct {
@@ -25,7 +26,7 @@ func (m *MockUserRepository) CreateUser(ctx context.Context, user *userPack.User
 	return args.Error(0)
 }
 
-func (m *MockUserRepository) GetUserByID(ctx context.Context, id int) (*userPack.User, error) {
+func (m *MockUserRepository) GetUser(ctx context.Context, id int) (*userPack.User, error) {
 	args := m.Called(ctx, id)
 	if u, ok := args.Get(0).(*userPack.User); ok {
 		return u, args.Error(1)
@@ -55,8 +56,12 @@ func TestCreateUser(t *testing.T) {
 		Age:      30,
 	}
 
-	jsonUser, _ := json.Marshal(user)
-	req, _ := http.NewRequest(http.MethodPost, "/users", bytes.NewBuffer(jsonUser))
+	jsonUser, err := json.Marshal(user)
+	require.NoError(t, err)
+
+	req, err := http.NewRequest(http.MethodPost, "/users", bytes.NewBuffer(jsonUser))
+	require.NoError(t, err)
+
 	req.Header.Set("Content-Type", "application/json")
 
 	w := httptest.NewRecorder()
@@ -72,8 +77,12 @@ func TestCreateUser(t *testing.T) {
 		Age:       30,
 	}
 
-	jsonUser, _ = json.Marshal(user)
-	req, _ = http.NewRequest(http.MethodPost, "/users", bytes.NewBuffer(jsonUser))
+	jsonUser, err = json.Marshal(user)
+	require.NoError(t, err)
+
+	req, err = http.NewRequest(http.MethodPost, "/users", bytes.NewBuffer(jsonUser))
+	require.NoError(t, err)
+
 	req.Header.Set("Content-Type", "application/json")
 
 	w = httptest.NewRecorder()
@@ -123,9 +132,11 @@ func TestGetUser(t *testing.T) {
 	}
 
 	// Test case: User found
-	mockRepo.On("GetUserByID", mock.Anything, 1).Return(testUser, nil)
+	mockRepo.On("GetUser", mock.Anything, 1).Return(testUser, nil)
 
-	req, _ := http.NewRequest(http.MethodGet, "/user/1", nil)
+	req, err := http.NewRequest(http.MethodGet, "/user/1", nil)
+	require.NoError(t, err)
+
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -133,9 +144,11 @@ func TestGetUser(t *testing.T) {
 	mockRepo.AssertExpectations(t)
 
 	// Test case: User not found
-	mockRepo.On("GetUserByID", mock.Anything, 2).Return((*userPack.User)(nil), errors.New("user not found"))
+	mockRepo.On("GetUser", mock.Anything, 2).Return((*userPack.User)(nil), errors.New("user not found"))
 
-	req, _ = http.NewRequest(http.MethodGet, "/user/2", nil)
+	req, err = http.NewRequest(http.MethodGet, "/user/2", nil)
+	require.NoError(t, err)
+
 	w = httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -163,8 +176,11 @@ func TestEditUser(t *testing.T) {
 
 	mockRepo.On("UpdateUser", mock.Anything, 1, &updatedUser).Return(nil)
 
-	jsonUser, _ := json.Marshal(updatedUser)
-	req, _ := http.NewRequest(http.MethodPatch, "/user/1", bytes.NewBuffer(jsonUser))
+	jsonUser, err := json.Marshal(updatedUser)
+	require.NoError(t, err)
+
+	req, err := http.NewRequest(http.MethodPatch, "/user/1", bytes.NewBuffer(jsonUser))
+	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
 
 	w := httptest.NewRecorder()
@@ -176,7 +192,9 @@ func TestEditUser(t *testing.T) {
 	// Test case: User not found
 	mockRepo.On("UpdateUser", mock.Anything, 2, &updatedUser).Return(errors.New("user not found"))
 
-	req, _ = http.NewRequest(http.MethodPatch, "/user/2", bytes.NewBuffer(jsonUser))
+	req, err = http.NewRequest(http.MethodPatch, "/user/2", bytes.NewBuffer(jsonUser))
+	require.NoError(t, err)
+
 	req.Header.Set("Content-Type", "application/json")
 
 	w = httptest.NewRecorder()

@@ -5,6 +5,11 @@ import (
 	"time"
 )
 
+type UserServiceInterface interface {
+	CreateUser(ctx context.Context, user *User) error
+	GetUser(ctx context.Context, id int) (*User, error)
+	UpdateUser(ctx context.Context, id int, user *User) error
+}
 type UserService struct {
 	repo UserRepository
 }
@@ -19,7 +24,7 @@ func (s *UserService) CreateUser(ctx context.Context, user *User) error {
 }
 
 func (s *UserService) GetUser(ctx context.Context, id int) (*User, error) {
-	return s.repo.GetUserByID(ctx, id)
+	return s.repo.GetUser(ctx, id)
 }
 
 func (s *UserService) UpdateUser(ctx context.Context, id int, user *User) error {
