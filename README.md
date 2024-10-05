@@ -4,7 +4,7 @@ Cделать REST API на Go для создания/удаления/реда
 * GET /user/<id> - get user
 * PATCH /user/<id> - edit user
 
-
+Добавил gRPC
 
 ID / Created генерим сами. Остальные - обязательны и валидируем на входе.
 

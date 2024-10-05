@@ -24,3 +24,4 @@ RUN ls -l /usr/local/bin/
 CMD ["user-api"]
 
 EXPOSE 8080
+EXPOSE 50051

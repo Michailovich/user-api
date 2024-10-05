@@ -19,6 +19,7 @@ services:
       DATABASE_URL: postgres://user:password@db:5432/mydb?sslmode=disable
     ports:
       - "8080:8080"
+      - "50051:50051"
     depends_on:
       - db
 

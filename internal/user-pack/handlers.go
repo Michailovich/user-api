@@ -8,27 +8,27 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type UserControllerInterface interface {
+type UserHandlerInterface interface {
 	CreateUser(ctx context.Context, user *User) error
 	GetUser(ctx context.Context, id int) (*User, error)
 	UpdateUser(ctx context.Context, id int, user *User) error
 }
-type UserController struct {
+type UserHandler struct {
 	service *UserService
 }
 
-func NewUserController(service *UserService) *UserController {
-	return &UserController{service: service}
+func NewUserHandler(service *UserService) *UserHandler {
+	return &UserHandler{service: service}
 }
 
-func (c *UserController) CreateUser(ctx *gin.Context) {
+func (c *UserHandler) CreateUser(ctx *gin.Context) {
 	var user User
 	if err := ctx.ShouldBindJSON(&user); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	if err := validateUser(user); err != nil {
+	if err := ValidateUser(&user); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -41,7 +41,7 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 	ctx.JSON(http.StatusCreated, user)
 }
 
-func (c *UserController) GetUser(ctx *gin.Context) {
+func (c *UserHandler) GetUser(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -58,7 +58,7 @@ func (c *UserController) GetUser(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, user)
 }
 
-func (c *UserController) UpdateUser(ctx *gin.Context) {
+func (c *UserHandler) UpdateUser(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {

@@ -45,9 +45,9 @@ func TestCreateUser(t *testing.T) {
 
 	mockRepo := new(MockUserRepository)
 	userService := userPack.NewUserService(mockRepo)
-	controller := userPack.NewUserController(userService)
+	handler := userPack.NewUserHandler(userService)
 
-	router.POST("/users", controller.CreateUser)
+	router.POST("/users", handler.CreateUser)
 
 	// Test case: Missing Firstname
 	user := userPack.User{
@@ -119,9 +119,9 @@ func TestGetUser(t *testing.T) {
 
 	mockRepo := new(MockUserRepository)
 	userService := userPack.NewUserService(mockRepo)
-	controller := userPack.NewUserController(userService)
+	handler := userPack.NewUserHandler(userService)
 
-	router.GET("/user/:id", controller.GetUser)
+	router.GET("/user/:id", handler.GetUser)
 
 	testUser := &userPack.User{
 		ID:        1,
@@ -162,9 +162,9 @@ func TestEditUser(t *testing.T) {
 
 	mockRepo := new(MockUserRepository)
 	userService := userPack.NewUserService(mockRepo)
-	controller := userPack.NewUserController(userService)
+	handler := userPack.NewUserHandler(userService)
 
-	router.PATCH("/user/:id", controller.UpdateUser)
+	router.PATCH("/user/:id", handler.UpdateUser)
 
 	// Test case: Successful User Update
 	updatedUser := userPack.User{
